@@ -228,9 +228,6 @@ bind_cols(
   cols_align(
     align = "left", columns = c(organization_origin, organization_origin_2)
   ) |> 
-  cols_align(
-    align = "center", columns = c(n, n_2)
-  ) |> 
   tab_style(
     style = cell_text(v_align = "top"),
     locations = cells_body()
