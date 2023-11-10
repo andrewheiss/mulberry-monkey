@@ -8,27 +8,240 @@ author:
 - name: Meng Ye
   affiliation: Georgia State University
   email: mye2@student.gsu.edu
-date: 2023-10-30
-# bibliography: references.bib
-link-citations: true
-format: 
-  html:
-    toc: true
-  hikmah-pdf: 
-    cite-method: citeproc
-
-    # Custom fonts
-    mainfont: "Linux Libertine O"
-    mainfontoptions:
-      - "Numbers=Proportional"
-      - "Numbers=OldStyle"
-    sansfont: "Mulish"
-    mathfont: "Libertinus Math"
-
-  docx: default
-language: 
-  title-block-published: "Latest version"
-
+date: 2023-11-10
 abstract: |
   The regulatory environment for international nongovernmental organizations (INGOs) has become increasingly restricted. The level of restriction INGOs face in practice varies, however. INGOs working on non-contentious issues such as humanitarian aid tend to see less restriction than those working on more contentious issues like advocacy. In spite of these restrictions, contentious organizations are often able to continue their work by relying on their operational flexibility. In this paper we explore the sources of this operational flexibility to determine which organizational factors allow INGOs to work effectively under legal restrictions. China provides an excellent setting for testing our argument. Its 2017 Overseas NGO (ONGO) law created two avenues for operating in the country: hundreds of INGOs have obtained permanent formal registration and while thousands work through temporary activities lasting no more than one year. Using data on both (1) formal and temporary activities registration and (2) organization-level characteristics such as issue areas, funding sources, and other instrumental details, we examine what determines if an INGO registers formally or through temporary activities. Our results provide an empirical illustration of the practical effect of NGO restrictions on global civil society and how organizations can adapt to this new legal environment.
+keywords:
+  - international NGOs
+  - civil society
+  - authoritarianism
+  - Chinese ONGO law
+code-repo: "Access the code, data, and analysis at <https://github.com/andrewheiss/mulberry-monkey>"
+# bibliography: references.json
+link-citations: true
 ---
+
+```{r setup, include=FALSE}
+if (is.null(knitr::pandoc_to())) {
+  fmt_out <- "interactive"
+} else {
+  fmt_out <- knitr::pandoc_to()
+}
+
+knitr::opts_chunk$set(
+  echo = FALSE, include = FALSE,
+  warning = FALSE, message = FALSE,
+  fig.align = "center", fig.retina = 3,
+  fig.width = 6, fig.height = (6 * 0.618),
+  out.width = "100%", collapse = TRUE
+)
+
+options(
+  digits = 3, width = 120,
+  dplyr.summarise.inform = FALSE,
+  knitr.kable.NA = ""
+)
+```
+
+```{r packages-data}
+library(tidyverse)
+library(tsibble)
+library(targets)
+library(gt)
+library(gtExtras)
+library(glue)
+library(scales)
+
+tar_config_set(
+  store = here::here('_targets'),
+  script = here::here('_targets.R')
+)
+
+source(here::here("R", "funs_graphics.R"))
+
+ongos_ro <- readRDS(here::here("data", "manual_data", "ongo.rds"))
+
+chinafile_ta_clean <- tar_read(chinafile_ta_clean) |> 
+  filter(start_date < ymd("2022-01-01"))
+
+work_fields <- chinafile_ta_clean |> 
+  mutate(duration = end_date - start_date) |> 
+  mutate(
+    short = duration <= 270,
+    short_fct = factor(short, labels = c("Longer than 9 months", "Shorter than 9 months"), ordered = TRUE)
+  ) |> 
+  mutate(field_list = map(field_of_work, ~str_split(., ","))) |> 
+  unnest(field_list) |> 
+  unnest(field_list) |> 
+  mutate(field_list = str_trim(field_list))
+
+diff_ordering <- work_fields |> 
+  mutate(field_list = factor(field_list)) |> 
+  count(short_fct, field_list, .drop = FALSE) |> 
+  pivot_wider(names_from = "short_fct", values_from = "n") |> 
+  mutate(diff = `Longer than 9 months` - `Shorter than 9 months`) |> 
+  mutate(
+    more_short = diff < 0,
+    more_short = factor(more_short, labels = c("More long-term activities", "More short-term activities"))
+  )
+```
+
+
+
+```{r}
+#| label: fig-ta-timeline
+#| fig-width: 6
+#| fig-height: 3
+#| include: true
+#| fig-cap: "Count of new temporary activities, divided by quarters"
+ta_timeline <- chinafile_ta_clean |> 
+  mutate(
+    start_year_month = yearmonth(start_date),
+    start_year_quarter = yearquarter(start_date)
+  ) |> 
+  group_by(start_year_quarter) |> 
+  summarize(count = n())
+
+ta_timeline |> 
+  ggplot(aes(x = start_year_quarter, y = count)) +
+  geom_col(just = 0, fill = clrs[3]) +
+  scale_x_yearquarter(date_breaks = "years", date_labels = "%Y") +
+  labs(x = NULL, y = "Count of new temporary activities") +
+  theme_ongo()
+```
+
+
+```{r}
+#| label: fig-issue
+#| fig-width: 6
+#| fig-height: 5.5
+#| include: true
+#| fig-cap: "Count of temporary activities across issue area"
+work_fields |> 
+  count(field_list) |>
+  mutate(field_list = fct_reorder(field_list, n)) |> 
+  ggplot(aes(x = n, y = field_list)) +
+  geom_col(fill = clrs[4]) +
+  scale_x_continuous(labels = label_comma(style_negative = "minus")) +
+  labs(x = "Count of temporary activities", y = NULL) +
+  theme_ongo()
+```
+
+
+```{r}
+#| label: fig-issue-duration
+#| fig-width: 6
+#| fig-height: 5.5
+#| include: true
+#| fig-cap: "Count of temporary activities across issue area and duration of activity"
+work_fields |> 
+  mutate(field_list = factor(field_list)) |> 
+  count(short_fct, field_list, .drop = FALSE) |> 
+  mutate(n = case_when(
+    short_fct == "Shorter than 9 months" ~ -n,
+    TRUE ~ n
+  )) |> 
+  left_join(
+    select(diff_ordering, field_list, diff, more_short),
+    by = join_by(field_list)
+  ) |> 
+  arrange(desc(short_fct), desc(n)) |>
+  mutate(field_list = fct_inorder(field_list)) |>
+  ggplot(aes(x = n, y = field_list, fill = short_fct)) +
+  geom_col() +
+  scale_x_continuous(label = abs_comma) +
+  scale_y_discrete(labels = label_wrap(15)) +
+  scale_fill_manual(values = c(clrs[2], clrs[7])) +
+  facet_wrap(vars(more_short), scales = "free_y") +
+  labs(x = "Count of temporary activities", y = NULL, fill = "Activity duration") +
+  theme_ongo() +
+  theme(axis.text.y = element_text(lineheight = 0.7))
+```
+
+```{r}
+#| label: tbl-top-orgs
+#| tbl-cap: "All organizations with at least 60 temporary activities"
+#| include: true
+#| column: screen-inset
+work_fields |> 
+  group_by(organization_name_english) |> 
+  summarize(
+    fields = knitr::combine_words(unique(field_list), sep = "; ", and = ""),
+    n_fields = n_distinct(field_list),
+    count = n(),
+    origin = knitr::combine_words(unique(organization_origin), and = " and ")
+  ) |> 
+  filter(count >= 60) |> 
+  arrange(desc(count)) |> 
+  mutate(fields_nice = glue("**{n_fields}**: {fields}")) |> 
+  select(organization_name_english, origin, count, fields_nice) |> 
+  gt() |> 
+  cols_label(
+    organization_name_english = "Organization",
+    origin = "Home country",
+    count = "Number of activities",
+    fields_nice = "Reported issue areas",
+  ) |> 
+  cols_align(
+    align = "left", columns = c(organization_name_english, origin, fields_nice)
+  ) |> 
+  cols_align(
+    align = "center", columns = c(count)
+  ) |> 
+  tab_style(
+    style = cell_text(v_align = "top"),
+    locations = cells_body()
+  ) |> 
+  fmt_markdown(columns = fields_nice) |>
+  gt_add_divider(columns = count, style = "dashed", weight = px(1)) |> 
+  opt_horizontal_padding(2) |> 
+  tab_options(
+    column_labels.font.weight = "bold",
+    row_group.font.weight = "bold",
+    quarto.disable_processing = TRUE
+  )
+```
+
+
+```{r}
+#| label: tbl-top-countries
+#| tbl-cap: "Organization home countries that appear at least 10 times"
+#| include: true
+country_count <- chinafile_ta_clean |> 
+  count(organization_origin) |> 
+  filter(n >= 10) |> 
+  arrange(desc(n))
+
+half <- nrow(country_count) / 2
+
+bind_cols(
+  slice(country_count, 1:half),
+  slice(country_count, (half + 1):n()) |> set_names(paste0(names(country_count), "_2"))
+) |> 
+  gt() |> 
+  cols_label(
+    organization_origin = "Home country",
+    organization_origin_2 = "Home country",
+    n = "Number of activities",
+    n_2 = "Number of activities",
+  ) |> 
+  cols_align(
+    align = "left", columns = c(organization_origin, organization_origin_2)
+  ) |> 
+  cols_align(
+    align = "center", columns = c(n, n_2)
+  ) |> 
+  tab_style(
+    style = cell_text(v_align = "top"),
+    locations = cells_body()
+  ) |> 
+  fmt_integer(columns = c(n, n_2)) |> 
+  gt_add_divider(columns = n, style = "dashed", weight = px(1)) |> 
+  opt_horizontal_padding(2) |> 
+  tab_options(
+    column_labels.font.weight = "bold",
+    row_group.font.weight = "bold",
+    quarto.disable_processing = TRUE
+  )
+```
+

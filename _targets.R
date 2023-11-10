@@ -31,7 +31,8 @@ tar_source()
 # Pipeline ---------------------------------------------------------------------
 list(
   ## Process and clean data ----
-  tar_target(chinafile_clean, load_clean_chinafile()),
+  tar_target(chinafile_ta_to_code, load_clean_chinafile_ta_coding()),
+  tar_target(chinafile_ta_clean, load_clean_chinafile_ta_full()),
   
   ## Render the README ----
   tar_quarto(readme, here_rel("README.qmd"))
