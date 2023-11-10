@@ -1,0 +1,34 @@
+---
+title: "Operational Flexibility, International Civil Society, and China’s Overseas NGO Law"
+author:
+- name: Andrew Heiss
+  affiliation: Georgia State University
+  email: aheiss@gsu.edu
+  orcid: 0000-0002-3948-3914
+- name: Meng Ye
+  affiliation: Georgia State University
+  email: mye2@student.gsu.edu
+date: 2023-10-30
+# bibliography: references.bib
+link-citations: true
+format: 
+  html:
+    toc: true
+  hikmah-pdf: 
+    cite-method: citeproc
+
+    # Custom fonts
+    mainfont: "Linux Libertine O"
+    mainfontoptions:
+      - "Numbers=Proportional"
+      - "Numbers=OldStyle"
+    sansfont: "Mulish"
+    mathfont: "Libertinus Math"
+
+  docx: default
+language: 
+  title-block-published: "Latest version"
+
+abstract: |
+  The regulatory environment for international nongovernmental organizations (INGOs) has become increasingly restricted. The level of restriction INGOs face in practice varies, however. INGOs working on non-contentious issues such as humanitarian aid tend to see less restriction than those working on more contentious issues like advocacy. In spite of these restrictions, contentious organizations are often able to continue their work by relying on their operational flexibility. In this paper we explore the sources of this operational flexibility to determine which organizational factors allow INGOs to work effectively under legal restrictions. China provides an excellent setting for testing our argument. Its 2017 Overseas NGO (ONGO) law created two avenues for operating in the country: hundreds of INGOs have obtained permanent formal registration and while thousands work through temporary activities lasting no more than one year. Using data on both (1) formal and temporary activities registration and (2) organization-level characteristics such as issue areas, funding sources, and other instrumental details, we examine what determines if an INGO registers formally or through temporary activities. Our results provide an empirical illustration of the practical effect of NGO restrictions on global civil society and how organizations can adapt to this new legal environment.
+---
