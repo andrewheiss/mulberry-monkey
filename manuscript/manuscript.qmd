@@ -19,6 +19,12 @@ keywords:
 code-repo: "Access the code, data, and analysis at <https://github.com/andrewheiss/mulberry-monkey>"
 # bibliography: references.json
 link-citations: true
+format: 
+  html:
+    knitr:
+      opts_chunk:
+        dev: "ragg_png"
+        dpi: 300
 ---
 
 ```{r setup, include=FALSE}
@@ -113,25 +119,30 @@ ta_timeline |>
 
 ```{r}
 #| label: fig-issue
-#| fig-width: 6
-#| fig-height: 5.5
+#| fig-width: 7
+#| fig-height: 3.5
 #| include: true
 #| fig-cap: "Count of temporary activities across issue area"
 work_fields |> 
   count(field_list) |>
+  arrange(n) |> 
+  mutate(facet_var = ifelse(rank(n) <= 15, "Group 2", "Group 1")) |> 
   mutate(field_list = fct_reorder(field_list, n)) |> 
   ggplot(aes(x = n, y = field_list)) +
   geom_col(fill = clrs[4]) +
   scale_x_continuous(labels = label_comma(style_negative = "minus")) +
+  # scale_y_discrete(labels = label_wrap(15)) +
   labs(x = "Count of temporary activities", y = NULL) +
-  theme_ongo()
+  facet_wrap(vars(facet_var), scales = "free_y") +
+  theme_ongo() +
+  theme(strip.text = element_blank(), axis.text.y = element_text(lineheight = 0.7))
 ```
 
 
 ```{r}
 #| label: fig-issue-duration
-#| fig-width: 6
-#| fig-height: 5.5
+#| fig-width: 7
+#| fig-height: 3.5
 #| include: true
 #| fig-cap: "Count of temporary activities across issue area and duration of activity"
 work_fields |> 
@@ -150,7 +161,7 @@ work_fields |>
   ggplot(aes(x = n, y = field_list, fill = short_fct)) +
   geom_col() +
   scale_x_continuous(label = abs_comma) +
-  scale_y_discrete(labels = label_wrap(15)) +
+  # scale_y_discrete(labels = label_wrap(15)) +
   scale_fill_manual(values = c(clrs[2], clrs[7])) +
   facet_wrap(vars(more_short), scales = "free_y") +
   labs(x = "Count of temporary activities", y = NULL, fill = "Activity duration") +
